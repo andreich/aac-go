@@ -7,7 +7,7 @@ import (
 	"io"
 	"unsafe"
 
-	"github.com/gen2brain/aac-go/aacenc"
+	"github.com/aam335/aac-go/aacenc"
 )
 
 // Options represent encoding options.
@@ -22,8 +22,8 @@ type Options struct {
 
 // Encoder type.
 type Encoder struct {
-	w io.Writer
-
+	w      io.Writer
+	aacEnc *aacenc.Encoder
 	insize int
 	inbuf  []byte
 	outbuf []byte
@@ -33,12 +33,13 @@ type Encoder struct {
 func NewEncoder(w io.Writer, opts *Options) (e *Encoder, err error) {
 	e = &Encoder{}
 	e.w = w
+	e.aacEnc = aacenc.New()
 
 	if opts.BitRate == 0 {
 		opts.BitRate = 64000
 	}
 
-	ret := aacenc.Init(aacenc.VoAudioCodingAac)
+	ret := e.aacEnc.Init(aacenc.VoAudioCodingAac)
 	err = aacenc.ErrorFromResult(ret)
 	if err != nil {
 		return
@@ -50,7 +51,7 @@ func NewEncoder(w io.Writer, opts *Options) (e *Encoder, err error) {
 	params.NChannels = int16(opts.NumChannels)
 	params.AdtsUsed = 1
 
-	ret = aacenc.SetParam(aacenc.VoPidAacEncparam, unsafe.Pointer(&params))
+	ret = e.aacEnc.SetParam(aacenc.VoPidAacEncparam, unsafe.Pointer(&params))
 	err = aacenc.ErrorFromResult(ret)
 	if err != nil {
 		return
@@ -85,7 +86,7 @@ func (e *Encoder) Encode(r io.Reader) (err error) {
 		input.Buffer = C.CBytes(e.inbuf)
 		input.Length = uint64(n)
 
-		ret := aacenc.SetInputData(&input)
+		ret := e.aacEnc.SetInputData(&input)
 		err = aacenc.ErrorFromResult(ret)
 		if err != nil {
 			return err
@@ -94,7 +95,7 @@ func (e *Encoder) Encode(r io.Reader) (err error) {
 		output.Buffer = C.CBytes(e.outbuf)
 		output.Length = uint64(len(e.outbuf))
 
-		ret = aacenc.GetOutputData(&output, &outinfo)
+		ret = e.aacEnc.GetOutputData(&output, &outinfo)
 		err = aacenc.ErrorFromResult(ret)
 		if err != nil {
 			return err
@@ -111,6 +112,6 @@ func (e *Encoder) Encode(r io.Reader) (err error) {
 
 // Close closes encoder.
 func (e *Encoder) Close() error {
-	ret := aacenc.Uninit()
+	ret := e.aacEnc.Uninit()
 	return aacenc.ErrorFromResult(ret)
 }

@@ -206,7 +206,10 @@ type AacencParam struct {
 	AdtsUsed int16
 }
 
-var handle C.VO_HANDLE
+// Encoder Thread-safe
+type Encoder struct {
+	handle C.VO_HANDLE
+}
 
 // Errors.
 var (
@@ -265,52 +268,57 @@ func ErrorFromResult(r uint) error {
 	}
 }
 
+// New encoder
+func New() *Encoder {
+	return &Encoder{}
+}
+
 // Init - init the audio codec module and return codec handle.
-func Init(vtype int32) uint {
+func (e *Encoder) Init(vtype int32) uint {
 	cvtype := (C.VO_AUDIO_CODINGTYPE)(vtype)
-	ret := C.voAACEncInit(&handle, cvtype, nil)
+	ret := C.voAACEncInit(&e.handle, cvtype, nil)
 	v := (uint)(ret)
 	return v
 }
 
 // SetInputData - set input audio data.
-func SetInputData(pinput *VoCodecBuffer) uint {
+func (e *Encoder) SetInputData(pinput *VoCodecBuffer) uint {
 	cpinput := pinput.cptr()
-	ret := C.voAACEncSetInputData(handle, cpinput)
+	ret := C.voAACEncSetInputData(e.handle, cpinput)
 	v := (uint)(ret)
 	return v
 }
 
 // GetOutputData - get the outut audio data.
-func GetOutputData(poutbuffer *VoCodecBuffer, poutinfo *VoAudioOutputinfo) uint {
+func (e *Encoder) GetOutputData(poutbuffer *VoCodecBuffer, poutinfo *VoAudioOutputinfo) uint {
 	cpoutbuffer := poutbuffer.cptr()
 	cpoutinfo := poutinfo.cptr()
-	ret := C.voAACEncGetOutputData(handle, cpoutbuffer, cpoutinfo)
+	ret := C.voAACEncGetOutputData(e.handle, cpoutbuffer, cpoutinfo)
 	v := (uint)(ret)
 	return v
 }
 
 // SetParam - set the parameter for the specified param ID.
-func SetParam(uparamid int, pdata unsafe.Pointer) uint {
+func (e *Encoder) SetParam(uparamid int, pdata unsafe.Pointer) uint {
 	cuparamid := (C.VO_S32)(uparamid)
 	cpdata := (C.VO_PTR)(pdata)
-	ret := C.voAACEncSetParam(handle, cuparamid, cpdata)
+	ret := C.voAACEncSetParam(e.handle, cuparamid, cpdata)
 	v := (uint)(ret)
 	return v
 }
 
 // GetParam - get the parameter for the specified param ID.
-func GetParam(uparamid int, pdata unsafe.Pointer) uint {
+func (e *Encoder) GetParam(uparamid int, pdata unsafe.Pointer) uint {
 	cuparamid := (C.VO_S32)(uparamid)
 	cpdata := (C.VO_PTR)(pdata)
-	ret := C.voAACEncGetParam(handle, cuparamid, cpdata)
+	ret := C.voAACEncGetParam(e.handle, cuparamid, cpdata)
 	v := (uint)(ret)
 	return v
 }
 
 // Uninit - uninit the Codec.
-func Uninit() uint {
-	ret := C.voAACEncUninit(handle)
+func (e *Encoder) Uninit() uint {
+	ret := C.voAACEncUninit(e.handle)
 	v := (uint)(ret)
 	return v
 }
