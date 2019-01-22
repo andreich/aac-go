@@ -1,7 +1,9 @@
-// Package aacenc implements cgo bindings for [VisualOn AAC encoder library](https://github.com/mstorsjo/vo-aacenc) library.
 package aacenc
 
+// Package aacenc implements cgo bindings for [VisualOn AAC encoder library](https://github.com/mstorsjo/vo-aacenc) library.
+
 //#include "voAAC.h"
+// VO_U32 encode(VO_HANDLE hCodec,void *pcm, int pcmlen, void *aac, int aacBufferSize, VO_U32 *err);
 import "C"
 
 import (
@@ -208,7 +210,9 @@ type AacencParam struct {
 
 // Encoder Thread-safe
 type Encoder struct {
-	handle C.VO_HANDLE
+	handle    C.VO_HANDLE
+	outbuff   [20480]byte
+	blockSize int // size of block for encoding
 }
 
 // Errors.
@@ -321,4 +325,36 @@ func (e *Encoder) Uninit() uint {
 	ret := C.voAACEncUninit(e.handle)
 	v := (uint)(ret)
 	return v
+}
+
+// EncodePcmBlock - Encodes single interleaved block 1024 * numchannels
+// if buffer size is wrong returns VoErrInvalidArg
+func (e *Encoder) EncodePcmBlock(inPcm []int16) (aac []byte, err uint) {
+	if len(inPcm) != e.blockSize {
+		return nil, VoErrInvalidArg
+	}
+	var ret _Ctype_VO_U32
+	len := C.encode(e.handle,
+		unsafe.Pointer(&inPcm[0]),
+		_Ctype_int(len(inPcm)*2), // int16
+		unsafe.Pointer(&e.outbuff[0]),
+		_Ctype_int(len(e.outbuff)),
+		&ret)
+	err = uint(ret)
+	if err != VoErrNone { // error
+		return nil, err
+	}
+	return e.outbuff[:len], err
+}
+
+// SetParamAac set Samplerate & numchannels for AAC encoding
+func (e *Encoder) SetParamAac(aacSamplerate, nChannels int) (err uint) {
+	e.blockSize = 1024 * nChannels
+	setParametersBlock := C.AACENC_PARAM{
+		sampleRate: _Ctype_int(aacSamplerate), /*! audio file sample rate */
+		bitRate:    64000,                     /*! encoder bit rate in bits/sec */
+		nChannels:  _Ctype_short(nChannels),   /*! number of channels on input (1,2) */
+		adtsUsed:   1,                         /*! whether write adts header */
+	}
+	return uint(C.voAACEncSetParam(e.handle, VoPidAacEncparam, _Ctype_VO_PTR(&setParametersBlock)))
 }

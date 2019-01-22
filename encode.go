@@ -1,6 +1,7 @@
 // Package aac provides AAC codec encoder based on [VisualOn AAC encoder](https://github.com/mstorsjo/vo-aacenc) library.
 package aac
 
+// #include <stdlib.h>
 import "C"
 
 import (
@@ -67,8 +68,12 @@ func NewEncoder(w io.Writer, opts *Options) (e *Encoder, err error) {
 
 // Encode encodes data from reader.
 func (e *Encoder) Encode(r io.Reader) (err error) {
+	var outinfo aacenc.VoAudioOutputinfo
+	var input, output aacenc.VoCodecBuffer
+	var n int
+loop:
 	for {
-		n, err := r.Read(e.inbuf)
+		n, err = r.Read(e.inbuf)
 		if err != nil {
 			if err != io.EOF {
 				return err
@@ -80,16 +85,13 @@ func (e *Encoder) Encode(r io.Reader) (err error) {
 			break
 		}
 
-		var outinfo aacenc.VoAudioOutputinfo
-		var input, output aacenc.VoCodecBuffer
-
 		input.Buffer = C.CBytes(e.inbuf)
 		input.Length = uint64(n)
 
 		ret := e.aacEnc.SetInputData(&input)
 		err = aacenc.ErrorFromResult(ret)
 		if err != nil {
-			return err
+			break loop
 		}
 
 		output.Buffer = C.CBytes(e.outbuf)
@@ -98,13 +100,24 @@ func (e *Encoder) Encode(r io.Reader) (err error) {
 		ret = e.aacEnc.GetOutputData(&output, &outinfo)
 		err = aacenc.ErrorFromResult(ret)
 		if err != nil {
-			return err
+			break loop
 		}
 
 		_, err = e.w.Write(C.GoBytes(output.Buffer, C.int(output.Length)))
 		if err != nil {
-			return err
+			break loop
 		}
+		C.free(input.Buffer)
+		input.Buffer = nil
+		C.free(output.Buffer)
+		output.Buffer = nil
+	}
+
+	if input.Buffer != nil {
+		C.free(input.Buffer)
+	}
+	if output.Buffer != nil {
+		C.free(output.Buffer)
 	}
 
 	return nil

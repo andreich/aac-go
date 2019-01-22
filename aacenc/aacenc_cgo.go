@@ -30,6 +30,7 @@ package aacenc
 #include "external/aacenc/src/stat_bits.c"
 #include "external/aacenc/src/tns.c"
 #include "external/aacenc/src/transform.c"
+// #include "bridge.c"
 
 #cgo CFLAGS: -std=gnu99 -Iexternal/aacenc/include -DUSE_DEFAULT_MEM
 */
