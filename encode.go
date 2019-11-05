@@ -71,19 +71,22 @@ func (e *Encoder) Encode(r io.Reader) (err error) {
 	var outinfo aacenc.VoAudioOutputinfo
 	var input, output aacenc.VoCodecBuffer
 	var n int
+	var prevRead int
 loop:
 	for {
-		n, err = r.Read(e.inbuf)
+		n, err = r.Read(e.inbuf[prevRead:])
 		if err != nil {
 			if err != io.EOF {
 				return err
 			}
 			break
 		}
-
-		if n < e.insize {
-			break
+		prevRead += n
+		if prevRead < e.insize {
+			continue
 		}
+		n = prevRead
+		prevRead = 0
 
 		input.Buffer = C.CBytes(e.inbuf)
 		input.Length = uint64(n)
