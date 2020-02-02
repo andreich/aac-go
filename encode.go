@@ -8,7 +8,7 @@ import (
 	"io"
 	"unsafe"
 
-	"github.com/aam335/aac-go/aacenc"
+	"github.com/andreich/aac-go/aacenc"
 )
 
 // Options represent encoding options.

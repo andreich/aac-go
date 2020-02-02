@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/gen2brain/aac-go"
-	"github.com/gen2brain/malgo"
+	"github.com/andreich/aac-go"
+	mal "github.com/gen2brain/malgo"
 )
 
 func main() {

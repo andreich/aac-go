@@ -5,7 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	aac "github.com/aam335/aac-go"
+	aac "github.com/andreich/aac-go"
+	"github.com/youpy/go-wav"
 )
 
 func main() {
